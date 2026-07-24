@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 import dotenv from 'dotenv';
-import { ScrollyStoryJSON } from '../../../shared/interfaces';
+import { ScrollyStoryJSON } from '../shared/interfaces';
 // debugging @shared outside /backend folder
 
 dotenv.config();
