@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../config/database';
 import { generarHistoriaConIA } from '../services/ai.service';
-import { subirSvgABlob } from '../services/blob.service';
+// import { subirSvgABlob } from '../services/blob.service';
 
 const router = Router();
 
@@ -42,7 +42,7 @@ router.put('/historias/:slug', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error al actualizar la historia' });
   }
 });
-
+/*
 // 3. Vincular el SVG pulido en Figma (Subida a Vercel Blobs)
 router.post('/historias/:slug/upload-svg', async (req: Request, res: Response) => {
   const { slug } = req.params;
@@ -63,7 +63,7 @@ router.post('/historias/:slug/upload-svg', async (req: Request, res: Response) =
     res.status(500).json({ error: 'Error al subir a Vercel Blobs' });
   }
 });
-
+*/
 // 4. API de consumo para tu Frontend Angular (Público)
 router.get('/historias/:slug', async (req: Request, res: Response) => {
   const { slug } = req.params;
