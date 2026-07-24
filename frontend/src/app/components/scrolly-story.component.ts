@@ -1,9 +1,11 @@
 import { Component, ElementRef, HostListener, Input, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { SvgInlineDirective } from './directives/svg-inline.directive';
+import { SvgInlineDirective } from '../directives/svg-inline.directive';
+import { HistoriaScrollyEntity } from '@shared/interfaces';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
+// Registrar el plugin de forma explícita para evitar problemas de optimización en producción
 gsap.registerPlugin(ScrollTrigger);
 
 @Component({
@@ -12,13 +14,14 @@ gsap.registerPlugin(ScrollTrigger);
   imports: [CommonModule, SvgInlineDirective],
   template: `
     <div #container class="scrolly-container">
-      <!-- CONTENEDOR FIJO (PINNED): Renderiza el SVG de Vercel Blobs -->
-      <div #canvas class="visual-canvas" [appSvgInline]="storyData.svg_final_url"></div>
+      <!-- CONTENEDOR FIJO (PINNED): Renderiza el SVG (IA Raw o Vercel Blobs) -->
+      <div #canvas class="visual-canvas" [appSvgInline]="fuenteSvg"></div>
 
-      <!-- CONTENEDOR DESLIZABLE: Bloques de texto explicativos -->
+      <!-- CONTENEDOR DESLIZABLE: Bloques de texto que empujan el scroll -->
       <div class="text-layers">
-        <div *ngFor="let scene of storyData.json_modificado.scenes" class="step-card">
+        <div *ngFor="let scene of historia.scenes" class="step-card">
           <div class="card-content">
+            <span class="step-badge">Paso {{ scene.step }}</span>
             <p>{{ scene.text }}</p>
           </div>
         </div>
@@ -26,32 +29,101 @@ gsap.registerPlugin(ScrollTrigger);
     </div>
   `,
   styles: [`
-    .scrolly-container { position: relative; width: 100%; display: flex; }
+    .scrolly-container { 
+      position: relative; 
+      width: 100%; 
+      display: flex; 
+      background-color: #0f172a; /* Fondo oscuro moderno para resaltar diagramas */
+    }
     .visual-canvas { 
-      position: relative; width: 60%; height: 100vh; 
-      display: flex; align-items: center; justify-content: center; 
+      position: relative; 
+      width: 60%; 
+      height: 100vh; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      overflow: hidden;
     }
-    ::v-deep .visual-canvas svg { width: 100%; height: auto; max-height: 80vh; }
-    .text-layers { width: 40%; }
+    /* Estilizado profundo para que el SVG inyectado se adapte al contenedor */
+    ::v-deep .visual-canvas svg { 
+      width: 90%; 
+      height: auto; 
+      max-height: 80vh; 
+    }
+    .text-layers { 
+      width: 40%; 
+      z-index: 10;
+    }
     .step-card { 
-      height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; 
+      height: 100vh; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      padding: 3rem; 
+      box-sizing: border-box;
     }
-    .card-content { background: rgba(255,255,255,0.9); padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    .card-content { 
+      background: rgba(30, 41, 59, 0.95); 
+      color: #f8fafc;
+      padding: 2rem; 
+      border-radius: 12px; 
+      border: 1px solid #334155;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+      backdrop-filter: blur(8px);
+      width: 100%;
+    }
+    .step-badge {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #38bdf8;
+      font-weight: 700;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    .card-content p {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin: 0;
+    }
   `]
 })
 export class ScrollyStoryComponent {
-  @Input() storyData!: any; // Recibe la fila directa de Neon
+  @Input() storyData!: HistoriaScrollyEntity;
+
   @ViewChild('container') container!: ElementRef;
   @ViewChild('canvas') canvas!: ElementRef;
 
-  // Escuchamos el evento de la directiva para garantizar que los IDs del SVG ya existen
+  /**
+   * Determina inteligentemente qué origen usar para el SVG según la fase del MVP
+   */
+  get fuenteSvg(): string {
+    return this.storyData.svg_final_url || this.storyData.json_modificado.svg_raw;
+  }
+
+  /**
+   * Facilita el acceso directo al JSON que contiene las escenas y animaciones
+   */
+  get historia() {
+    return this.storyData.json_modificado;
+  }
+
+  /**
+   * Escucha el evento personalizado de la directiva.
+   * Esto asegura que los vectores e IDs ya están físicamente en el DOM antes de inicializar GSAP.
+   */
   @HostListener('svg-loaded')
   onSvgLoaded() {
+    // Limpiar instancias previas de ScrollTrigger para evitar fugas de memoria al cambiar de ruta
+    ScrollTrigger.getAll().forEach(trigger => trigger.kill());
+    
+    // Inicializar el motor de scroll
     this.initScrollAnimations();
   }
 
-  initScrollAnimations() {
-    // 1. Configurar PINNING del elemento visual
+  private initScrollAnimations() {
+    // 1. Configurar PINNING: El contenedor visual se queda congelado en pantalla
     ScrollTrigger.create({
       trigger: this.container.nativeElement,
       start: 'top top',
@@ -60,22 +132,21 @@ export class ScrollyStoryComponent {
       scrub: true
     });
 
-    // 2. Línea de tiempo maestra basada en PROGRESO (Scrub)
+    // 2. Crear la Línea de Tiempo Maestra vinculada al progreso del scroll (SCRUB)
     const masterTimeline = gsap.timeline({
       scrollTrigger: {
         trigger: this.container.nativeElement,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 1 // Suavizado para evitar brincos bruscos del usuario
+        scrub: 1 // Suavizado de 1 segundo para amortiguar el scroll del usuario
       }
     });
 
-    // 3. Orquestación automática usando los IDs e instrucciones de Gemini
-    const scenes = this.storyData.json_modificado.scenes;
-    scenes.forEach((scene: any) => {
+    // 3. Orquestación Dinámica: Mapear los keyframes que la IA estructuró en la base de datos
+    this.historia.scenes.forEach((scene) => {
       masterTimeline.to(scene.animation.targetId, {
         ...scene.animation.keyframes,
-        duration: 1 // Distribución equitativa a lo largo del scroll
+        duration: 1 // GSAP distribuye esta duración equitativamente a lo largo del scroll total
       });
     });
   }

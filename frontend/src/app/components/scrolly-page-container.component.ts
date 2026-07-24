@@ -1,8 +1,9 @@
 import { Component, OnInit, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { CommonModule } from '@angular/common/common';
+import { StoryService } from '../services/story.service';
 import { ScrollyStoryComponent } from './scrolly-story.component';
+import { HistoriaScrollyEntity } from '@shared/interfaces';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -10,46 +11,79 @@ import { firstValueFrom } from 'rxjs';
   standalone: true,
   imports: [CommonModule, ScrollyStoryComponent],
   template: `
-    <div *ngIf="loading" class="loading-screen">Cargando concepto técnico...</div>
-    <div *ngIf="error" class="error-screen">No se pudo cargar la historia. Verifica la URL.</div>
+    <!-- Pantalla de carga -->
+    <div *ngIf="loading" class="state-screen loading">
+      <div class="spinner"></div>
+      <p>Descargando estructura del concepto técnico...</p>
+    </div>
+
+    <!-- Pantalla de error -->
+    <div *ngIf="error" class="state-screen error">
+      <h2>❌ Concepto no encontrado</h2>
+      <p>Verifica el slug en la URL o asegúrate de haberlo generado en el backend.</p>
+    </div>
     
-    <!-- Cuando los datos de Neon están listos, renderizamos el scrollytelling -->
-    <app-scrolly-story *ngIf="storyData" [storyData]="storyData"></app-scrolly-story>
+    <!-- Renderizado del Core Scrollytelling con GSAP -->
+    <app-scrolly-story 
+      *ngIf="!loading && !error && storyData" 
+      [storyData]="storyData">
+    </app-scrolly-story>
   `,
   styles: [`
-    .loading-screen, .error-screen { 
-      height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; font-size: 1.2rem; 
+    .state-screen {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #f8f9fa;
+      color: #212529;
     }
+    .loading p { margin-top: 1rem; font-size: 1.1rem; color: #495057; }
+    .error h2 { color: #dc3545; margin-bottom: 0.5rem; }
+    
+    /* Spinner CSS minimalista */
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-top-color: #0d6efd;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `]
 })
 export class ScrollyPageContainerComponent implements OnInit {
   private route = inject(ActivatedRoute);
-  private http = inject(HttpClient);
+  private storyService = inject(StoryService);
 
-  storyData: any = null;
+  storyData: HistoriaScrollyEntity | null = null;
   loading = true;
   error = false;
 
-  // Cambia esto por tu URL real de Railway en producción
-  private apiUrl = 'https://railway.app';
-
   async ngOnInit() {
+    // Escuchar cambios en la URL de forma reactiva por si el usuario navega entre historias
     this.route.paramMap.subscribe(async (params) => {
       const slug = params.get('slug');
       if (slug) {
-        await this.cargarHistoria(slug);
+        await this.cargarDatosDeHistoria(slug);
+      } else {
+        this.loading = false;
+        this.error = true;
       }
     });
   }
 
-  async cargarHistoria(slug: string) {
+  private async cargarDatosDeHistoria(slug: string) {
     this.loading = true;
     this.error = false;
     try {
-      // Consumimos el endpoint simplificado de Railway que lee de Neon
-      this.storyData = await firstValueFrom(this.http.get<any>(`${this.apiUrl}/${slug}`));
+      // Convertimos el observable a promesa para un manejo asíncrono limpio con try/catch
+      this.storyData = await firstValueFrom(this.storyService.obtenerHistoriaPorSlug(slug));
     } catch (err) {
-      console.error(err);
+      console.error('Error recuperando los datos del concepto:', err);
       this.error = true;
     } finally {
       this.loading = false;

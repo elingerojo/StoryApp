@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type, Schema } from '@google/genai';
 import dotenv from 'dotenv';
-import { ScrollyStoryJSON } from '../../shared/interfaces';
+import { ScrollyStoryJSON } from '@shared/interfaces';
 
 dotenv.config();
 
@@ -58,7 +58,7 @@ export async function generarHistoriaConIA(concepto: string): Promise<ScrollySto
   try {
     // Llamada oficial usando la API estructurada de Gemini 2.5
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       contents: `Explicar el siguiente concepto técnico paso a paso: ${concepto}`,
       config: {
         systemInstruction: systemInstruction,
