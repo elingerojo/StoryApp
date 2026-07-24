@@ -1,0 +1,38 @@
+{
+  "type": "object",
+  "properties": {
+    "storyId": { "type": "string" },
+    "title": { "type": "string" },
+    "svg_raw": { "type": "string" },
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step": { "type": "integer" },
+          "text": { "type": "string" },
+          "animation": {
+            "type": "object",
+            "properties": {
+              "targetId": { "type": "string" },
+              "keyframes": {
+                "type": "object",
+                "properties": {
+                  "opacity": { "type": "number" },
+                  "scale": { "type": "number" },
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "rotation": { "type": "number" }
+                },
+                "additionalProperties": true
+              }
+            },
+            "required": ["targetId", "keyframes"]
+          }
+        },
+        "required": ["step", "text", "animation"]
+      }
+    }
+  ,
+  "required": ["storyId", "title", "svg_raw", "scenes"]
+}

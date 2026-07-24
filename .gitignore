@@ -1,0 +1,29 @@
+# Cache y Dependencias de Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Compilaciones y Salidas de Distribución
+/backend/dist/
+/frontend/.angular/
+/frontend/dist/
+
+# Archivos de Configuración Local y Secretos (¡CRUCIAL!)
+.env
+.env.local
+.env.*.local
+
+# Archivos del Sistema Operativo
+.DS_Store
+Thumbs.db
+
+# Configuración de Editores de Código
+.idea/
+.vscode/
+*.suo
+*.ntvs
+*.njsproj
+*.sln
+*.sw?
