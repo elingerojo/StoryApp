@@ -1,7 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../config/database';
 import { generarHistoriaConIA } from '../services/ai.service';
-// import { subirSvgABlob } from '../services/blob.service';
 
 const router = Router();
 
