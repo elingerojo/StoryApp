@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
-    "rootDir": "./src",
+//    "rootDir": "./src",
     "outDir": "./dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
@@ -12,5 +12,7 @@
       "@shared/*": ["../shared/*"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", 
+    "../shared/**/*" // CRUCIAL: Le dice a tsc que permita compilar esta carpeta externa
+  ]
 }
