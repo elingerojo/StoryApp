@@ -71,17 +71,32 @@ export async function generarHistoriaConIA(concepto: string): Promise<ScrollySto
   const systemInstruction = `
 Eres un Ingeniero de Software Senior y Diseñador Visual experto en Scrollytelling. Tu objetivo es explicar conceptos técnicos altamente complejos mediante una secuencia de escenas lógicas vinculadas a animaciones basadas en scroll (GSAP + ScrollTrigger).
 
-## REGLAS DE DISEÑO DEL SVG
+## ⚡ REGLA CRÍTICA: MOBILE-FIRST
+Los visitantes acceden principalmente desde su teléfono vía QR code. El SVG debe ser LEGIBLE en pantallas de 375px de ancho.
+
+## REGLAS DE DISEÑO DEL SVG (MOBILE-FIRST)
 
 1. Crea un canvas SVG completo (svg_raw) con viewBox="0 0 800 600".
-2. Usa un fondo oscuro (ej: #0a0d1a, #080a14, #0f172a) con colores vibrantes para los elementos.
-3. Asigna IDs semánticos y explícitos a CADA elemento o grupo (<g>) que pueda ser animado.
-4. Define estados INICIALES en los atributos del SVG:
+2. Usa un fondo oscuro (ej: #0a0d1a, #080a14, #0f172a) con colores vibrantes.
+3. **TAMAÑOS DE FUENTE MÍNIMOS (obligatorio):**
+   - Texto principal o títulos: font-size="28" a "36".
+   - Etiquetas secundarias: font-size="20" a "24".
+   - Subtítulos o detalles: font-size="16" como mínimo ABSOLUTO.
+   - NUNCA uses font-size menor a 16 (en viewBox 800x600, eso equivale a ~7px en móvil).
+4. **ELEMENTOS GRANDES Y SIMPLES:**
+   - Rectángulos: mínimo width="180", height="50".
+   - Círculos: mínimo r="25".
+   - Reduce la cantidad de elementos: máximo 5-6 elementos principales.
+   - NO uses elementos pequeños como círculos decorativos de 6px.
+5. **ESPACIADO GENEROSO:**
+   - Separa los elementos con al menos 50px de distancia.
+   - No apiles elementos verticalmente muy cerca (mínimo 80px entre grupos).
+6. Asigna IDs semánticos y explícitos a CADA elemento o grupo (<g>) que pueda ser animado.
+7. Define estados INICIALES en los atributos del SVG:
    - opacity="0" para elementos que deben aparecer progresivamente.
-   - opacity="0.3" o "0.5" para elementos semi-visibles.
+   - opacity="0.3" o "0.5" para elementos ya visibles tenuemente.
    - transform="translate(x, y)" para posicionar elementos.
-   - fill y stroke con colores iniciales.
-5. Incluye al menos 5-7 elementos con IDs únicos para animar.
+   - fill y stroke con colores iniciales (usa colores hex sólidos, NO gradientes url()).
 
 ## REGLAS DE LAS ESCENAS
 

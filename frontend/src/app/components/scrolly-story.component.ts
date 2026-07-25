@@ -32,63 +32,110 @@ gsap.registerPlugin(ScrollTrigger);
     </div>
   `,
   styles: [`
-    .scrolly-container { 
-      position: relative; 
-      width: 100%; 
-      display: flex; 
-      background-color: #0f172a; /* Fondo oscuro moderno para resaltar diagramas */
+    /* ================================================================
+       MOBILE-FIRST SCROLLYTELLING
+       ================================================================
+       Por defecto (móvil): SVG pinned arriba (45vh), texto abajo.
+       A partir de 768px (tablet/desktop): SVG izquierda, texto derecha.
+    ================================================================ */
+
+    .scrolly-container {
+      position: relative;
+      width: 100%;
+      background-color: #0f172a;
     }
-    .visual-canvas { 
-      position: relative; 
-      width: 60%; 
-      height: 100vh; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
+
+    /* ── Canvas SVG: Ocupa todo el ancho, altura reducida ── */
+    .visual-canvas {
+      position: relative;
+      width: 100%;
+      height: 45vh;
+      min-height: 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       overflow: hidden;
     }
-    /* Estilizado profundo para que el SVG inyectado se adapte al contenedor */
-    ::v-deep .visual-canvas svg { 
-      width: 90%; 
-      height: auto; 
-      max-height: 80vh; 
+    ::v-deep .visual-canvas svg {
+      width: 95%;
+      height: auto;
+      max-height: 40vh;
     }
-    .text-layers { 
-      width: 40%; 
+
+    /* ── Texto: Ancho completo, cards más compactas ── */
+    .text-layers {
+      width: 100%;
       z-index: 10;
     }
-    .step-card { 
-      height: 100vh; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      padding: 3rem; 
+    .step-card {
+      min-height: 55vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.2rem;
       box-sizing: border-box;
     }
-    .card-content { 
-      background: rgba(30, 41, 59, 0.95); 
+    .card-content {
+      background: rgba(30, 41, 59, 0.95);
       color: #f8fafc;
-      padding: 2rem; 
-      border-radius: 12px; 
+      padding: 1.2rem;
+      border-radius: 12px;
       border: 1px solid #334155;
       box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
       backdrop-filter: blur(8px);
       width: 100%;
+      max-width: 500px;
     }
     .step-badge {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: #38bdf8;
       font-weight: 700;
       display: block;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
     .card-content p {
       font-family: system-ui, -apple-system, sans-serif;
-      font-size: 1.1rem;
-      line-height: 1.6;
+      font-size: 0.95rem;
+      line-height: 1.5;
       margin: 0;
+    }
+
+    /* ── TABLET / DESKTOP (>= 768px) ── */
+    @media (min-width: 768px) {
+      .scrolly-container {
+        display: flex;
+      }
+      .visual-canvas {
+        width: 60%;
+        height: 100vh;
+        position: relative;
+      }
+      ::v-deep .visual-canvas svg {
+        width: 90%;
+        height: auto;
+        max-height: 80vh;
+      }
+      .text-layers {
+        width: 40%;
+      }
+      .step-card {
+        height: 100vh;
+        padding: 3rem;
+        min-height: unset;
+      }
+      .card-content {
+        padding: 2rem;
+        max-width: unset;
+      }
+      .card-content p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+      }
+      .step-badge {
+        font-size: 0.8rem;
+      }
     }
   `]
 })
