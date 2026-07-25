@@ -157,23 +157,70 @@ export class ScrollyStoryComponent {
       }
     });
 
-    // 4. Orquestación Dinámica usando Referencias del DOM Local
-    this.historia().scenes.forEach((scene) => {
-      // Limpiamos el texto para obtener solo el nombre del ID puro (ej: 'mempool')
-      const idLimpio = scene.animation.targetId.replace('#', '');
-      
-      // ⬇️ BUSQUEDA ESTRICTA LOCAL: Buscamos la etiqueta directamente dentro de nuestro canvas
-      const elementoNatvo = canvasEl.querySelector(`#${idLimpio}`);
-
-      if (elementoNatvo) {
-        // Pasamos el objeto HTML directo a GSAP en lugar de un string
-        masterTimeline.to(elementoNatvo, {
-          ...scene.animation.keyframes,
-          duration: 1
-        });
+    // 4. Obtener todas las animaciones (soporta legacy + V1)
+    const animaciones = this.extraerAnimaciones();
+    
+    // 5. Orquestación Dinámica con Múltiples Animaciones por Escena
+    animaciones.forEach(({ elemento, keyframes, offset, duration }) => {
+      if (elemento) {
+        masterTimeline.to(elemento, {
+          ...keyframes,
+          duration: duration ?? 1
+        }, offset ?? 0);
+        //                     ↑ El 3er parámetro de timeline.to() es la POSICIÓN
+        //                      0 = inicio de la escena, 0.5 = medio segundo después
       } else {
-        console.warn(`⚠️ MVP Log: No se encontró la capa física con id="${idLimpio}" dentro del SVG renderizado.`);
+        console.warn(`⚠️ Elemento SVG no encontrado para animación.`);
       }
     });
+  }
+
+  /**
+   * Extrae todas las animaciones de todas las escenas, soportando:
+   * - [LEGACY] scene.animation (objeto único)
+   * - [V1]     scene.animations (array con offset y duration)
+   *
+   * Convierte cada animación en un objeto plano para la timeline de GSAP.
+   */
+  private extraerAnimaciones(): Array<{
+    elemento: HTMLElement | null;
+    keyframes: Record<string, any>;
+    offset: number;
+    duration: number;
+  }> {
+    const canvasEl = this.canvas()?.nativeElement as HTMLElement | undefined;
+    if (!canvasEl) return [];
+
+    const resultado: Array<{
+      elemento: HTMLElement | null;
+      keyframes: Record<string, any>;
+      offset: number;
+      duration: number;
+    }> = [];
+
+    this.historia().scenes.forEach((scene) => {
+      // Determinar qué animaciones usar (V1 > legacy)
+      const anims = scene.animations?.length
+        ? scene.animations
+        : (scene.animation ? [scene.animation] : []);
+
+      anims.forEach((anim) => {
+        const idLimpio = anim.targetId.replace('#', '');
+        const elemento = canvasEl.querySelector(`#${idLimpio}`);
+        
+        if (!elemento) {
+          console.warn(`⚠️ No se encontró la capa física con id="${idLimpio}" dentro del SVG renderizado.`);
+        }
+
+        resultado.push({
+          elemento: elemento as HTMLElement | null,
+          keyframes: { ...anim.keyframes },
+          offset: anim.offset ?? 0,
+          duration: anim.duration ?? 1,
+        });
+      });
+    });
+
+    return resultado;
   }
 }

@@ -7,33 +7,41 @@ export interface GSAPKeyframes {
   x?: number;
   y?: number;
   rotation?: number;
-  [key: string]: any; // Permite expandir propiedades CSS en el futuro sin romper el tipo
+  fill?: string;          // Color de relleno (ej: '#00ff00')
+  stroke?: string;        // Color de borde (ej: '#ff0000')
+  strokeWidth?: number;   // Grosor de borde (ej: 5)
+  strokeDasharray?: number; // Patrón de guiones para efecto "dibujar" (ej: 200)
+  strokeDashoffset?: number; // Desplazamiento del patrón (ej: 100)
+  [key: string]: any;    // Permite expandir propiedades en el futuro sin romper el tipo
 }
 
 /**
  * Representa la animación de GSAP vinculada a un ID del SVG
  */
 export interface ScrollyAnimation {
-  targetId: string;    // Ej: '#nodo-validador'
+  targetId: string;       // Ej: '#nodo-validador'
   keyframes: GSAPKeyframes;
+  offset?: number;        // Posición en la timeline (0 = inicio de la escena)
+  duration?: number;      // Duración específica (default: 1)
 }
 
 /**
  * Cada uno de los pasos o diapositivas activadas por el Scroll
  */
 export interface ScrollyScene {
-  step: number;        // Orden cronológico (1, 2, 3...)
-  text: string;        // Explicación técnica corta expuesta al usuario
-  animation: ScrollyAnimation;
+  step: number;           // Orden cronológico (1, 2, 3...)
+  text: string;           // Explicación técnica corta expuesta al usuario
+  animation?: ScrollyAnimation;    // [LEGACY] Para compatibilidad con datos viejos
+  animations?: ScrollyAnimation[]; // [V1] Múltiples animaciones por escena
 }
 
 /**
  * El contrato de datos completo generado por Gemini y guardado en Neon
  */
 export interface ScrollyStoryJSON {
-  storyId: string;     // Slug único (ej: 'oauth2-flow')
-  title: string;       // Título legible de la historia
-  svg_raw: string;     // Código SVG crudo inicial que entrega la IA
+  storyId: string;        // Slug único (ej: 'oauth2-flow')
+  title: string;          // Título legible de la historia
+  svg_raw: string;        // Código SVG crudo inicial que entrega la IA
   scenes: ScrollyScene[];
 }
 
