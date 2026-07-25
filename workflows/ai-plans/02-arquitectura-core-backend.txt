@@ -1,0 +1,11 @@
+MODELO DE IA UTILIZADO: gemini-3.5-flash (Invocado mediante el SDK oficial @google/genai)
+MIME TYPE CONFIGURADO: application/json (Forzado mediante responseSchema estricto)
+
+ENDPOINT DE CONSUMO PÚBLICO: GET https://railway.app
+MECANISMO DE CONEXIÓN: Pool de 'pg' con sslmode=verify-full directo hacia Neon.
+
+NOTAS PARA LA MIGRACIÓN:
+El backend ya está 100% estabilizado en producción y entrega la estructura de datos
+limpia. No requiere modificaciones en la sesión de Signals del Frontend. El campo
+'targetId' viene como texto plano sin el prefijo '#' (ej: 'mempool'), por lo que el
+frontend debe sanitizarlo antes de entregárselo a GSAP.

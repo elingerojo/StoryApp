@@ -1,7 +1,7 @@
-import { Injectable, inject } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { HistoriaScrollyEntity } from '@shared/interfaces';
+import type { HistoriaScrollyEntity } from '../../../../backend/src/shared/interfaces';
 
 @Injectable({
   providedIn: 'root'
@@ -10,7 +10,7 @@ export class StoryService {
   private http = inject(HttpClient);
 
   // Reemplaza esta URL por el dominio real que te asigne Railway en producción
-  private apiUrl = 'http://localhost:3000/api/historias';
+  private apiUrl = 'https://storyapp-production-a827.up.railway.app/api/historias';
 
   /**
    * Consume una historia de scrollytelling filtrada por su URL (slug)

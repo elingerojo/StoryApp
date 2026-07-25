@@ -1,7 +1,7 @@
-import { Component, ElementRef, HostListener, Input, ViewChild } from '@angular/core';
+import { Component, computed, ElementRef, input, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SvgInlineDirective } from '../directives/svg-inline.directive';
-import { HistoriaScrollyEntity } from '@shared/interfaces';
+import { HistoriaScrollyEntity } from '../../../../backend/src/shared/interfaces';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -12,14 +12,17 @@ gsap.registerPlugin(ScrollTrigger);
   selector: 'app-scrolly-story',
   standalone: true,
   imports: [CommonModule, SvgInlineDirective],
+  host: {
+    '(svg-loaded)': 'onSvgLoaded()'
+  },
   template: `
     <div #container class="scrolly-container">
       <!-- CONTENEDOR FIJO (PINNED): Renderiza el SVG (IA Raw o Vercel Blobs) -->
-      <div #canvas class="visual-canvas" [appSvgInline]="fuenteSvg"></div>
+      <div #canvas class="visual-canvas" [appSvgInline]="fuenteSvg()"></div>
 
       <!-- CONTENEDOR DESLIZABLE: Bloques de texto que empujan el scroll -->
       <div class="text-layers">
-        <div *ngFor="let scene of historia.scenes" class="step-card">
+        <div *ngFor="let scene of historia().scenes" class="step-card">
           <div class="card-content">
             <span class="step-badge">Paso {{ scene.step }}</span>
             <p>{{ scene.text }}</p>
@@ -90,64 +93,87 @@ gsap.registerPlugin(ScrollTrigger);
   `]
 })
 export class ScrollyStoryComponent {
-  @Input() storyData!: HistoriaScrollyEntity;
+  /** Input signal requerida — el componente no funciona sin los datos de la historia */
+  storyData = input.required<HistoriaScrollyEntity>();
 
-  @ViewChild('container') container!: ElementRef;
-  @ViewChild('canvas') canvas!: ElementRef;
+  /** Referencias reactivas al DOM mediante viewChild */
+  container = viewChild<ElementRef>('container');
+  canvas = viewChild<ElementRef>('canvas');
 
   /**
-   * Determina inteligentemente qué origen usar para el SVG según la fase del MVP
+   * Determina inteligentemente qué origen usar para el SVG según la fase del MVP.
+   * Signal computada: se recalcula automáticamente si storyData cambia.
    */
-  get fuenteSvg(): string {
-    return this.storyData.svg_final_url || this.storyData.json_modificado.svg_raw;
-  }
+  protected fuenteSvg = computed(() => {
+    const data = this.storyData();
+    return data.svg_final_url || data.json_modificado.svg_raw;
+  });
 
   /**
-   * Facilita el acceso directo al JSON que contiene las escenas y animaciones
+   * Expone el JSON modificado con escenas y animaciones.
+   * Signal computada derivada de storyData.
    */
-  get historia() {
-    return this.storyData.json_modificado;
-  }
+  protected historia = computed(() => this.storyData().json_modificado);
 
   /**
-   * Escucha el evento personalizado de la directiva.
+   * Escucha el evento personalizado 'svg-loaded' emitido por la directiva SvgInlineDirective.
    * Esto asegura que los vectores e IDs ya están físicamente en el DOM antes de inicializar GSAP.
+   * El binding se define en la propiedad 'host' del decorador @Component.
    */
-  @HostListener('svg-loaded')
   onSvgLoaded() {
     // Limpiar instancias previas de ScrollTrigger para evitar fugas de memoria al cambiar de ruta
     ScrollTrigger.getAll().forEach(trigger => trigger.kill());
-    
-    // Inicializar el motor de scroll
-    this.initScrollAnimations();
+
+    setTimeout(() => {
+      // Validamos por seguridad que las referencias existan en el DOM antes de dárselas a GSAP
+      if (this.container() && this.canvas()) {
+        this.initScrollAnimations();
+      } else {
+        console.warn('⚠️ Las referencias del DOM aún no están listas para GSAP.');
+      }
+    }, 0);
   }
 
   private initScrollAnimations() {
-    // 1. Configurar PINNING: El contenedor visual se queda congelado en pantalla
+    // 1. Obtener la referencia nativa del contenedor del canvas donde se inyectó el SVG
+    const canvasEl = this.canvas()!.nativeElement as HTMLElement;
+
+    // 2. Configurar PINNING
     ScrollTrigger.create({
-      trigger: this.container.nativeElement,
+      trigger: this.container()!.nativeElement,
       start: 'top top',
       end: 'bottom bottom',
-      pin: this.canvas.nativeElement,
+      pin: this.canvas()!.nativeElement,
       scrub: true
     });
 
-    // 2. Crear la Línea de Tiempo Maestra vinculada al progreso del scroll (SCRUB)
+    // 3. Crear la Línea de Tiempo Maestra
     const masterTimeline = gsap.timeline({
       scrollTrigger: {
-        trigger: this.container.nativeElement,
+        trigger: this.container()!.nativeElement,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 1 // Suavizado de 1 segundo para amortiguar el scroll del usuario
+        scrub: 1
       }
     });
 
-    // 3. Orquestación Dinámica: Mapear los keyframes que la IA estructuró en la base de datos
-    this.historia.scenes.forEach((scene) => {
-      masterTimeline.to(scene.animation.targetId, {
-        ...scene.animation.keyframes,
-        duration: 1 // GSAP distribuye esta duración equitativamente a lo largo del scroll total
-      });
+    // 4. Orquestación Dinámica usando Referencias del DOM Local
+    this.historia().scenes.forEach((scene) => {
+      // Limpiamos el texto para obtener solo el nombre del ID puro (ej: 'mempool')
+      const idLimpio = scene.animation.targetId.replace('#', '');
+      
+      // ⬇️ BUSQUEDA ESTRICTA LOCAL: Buscamos la etiqueta directamente dentro de nuestro canvas
+      const elementoNatvo = canvasEl.querySelector(`#${idLimpio}`);
+
+      if (elementoNatvo) {
+        // Pasamos el objeto HTML directo a GSAP en lugar de un string
+        masterTimeline.to(elementoNatvo, {
+          ...scene.animation.keyframes,
+          duration: 1
+        });
+      } else {
+        console.warn(`⚠️ MVP Log: No se encontró la capa física con id="${idLimpio}" dentro del SVG renderizado.`);
+      }
     });
   }
 }

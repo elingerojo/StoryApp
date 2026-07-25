@@ -1,29 +1,37 @@
-import { Directive, ElementRef, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
+import { Directive, ElementRef, inject, input, effect } from '@angular/core';
 
 @Directive({
   selector: '[appSvgInline]',
   standalone: true
 })
-export class SvgInlineDirective implements OnChanges {
+export class SvgInlineDirective {
   // El elemento nativo del DOM donde se inyectará el SVG
   private el = inject(ElementRef);
 
-  // Puede recibir una URL de Vercel Blobs o el código SVG dinámico crudo de la IA
-  @Input('appSvgInline') source!: string | null;
+  /**
+   * Input signal: puede recibir una URL de Vercel Blobs o el código SVG dinámico crudo de la IA.
+   * Usamos 'alias' para mantener la sintaxis [appSvgInline]="..." en el template.
+   */
+  source = input<string | null>(null, { alias: 'appSvgInline' });
 
-  async ngOnChanges(changes: SimpleChanges): Promise<void> {
-    if (changes['source'] && this.source) {
-      const valor = this.source.trim();
+  constructor() {
+    // Efecto reactivo: se dispara automáticamente cuando source() cambia
+    effect(() => {
+      const valor = this.source();
+      
+      if (!valor) return;
+
+      const trimmed = valor.trim();
 
       // Verificar si el source es una URL (Vercel Blobs) o código SVG directo
-      if (valor.startsWith('http://') || valor.startsWith('https://')) {
-        await this.descargarEInyectarDesdeUrl(valor);
-      } else if (valor.startsWith('<svg')) {
-        this.inyectarSvgCrudo(valor);
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        this.descargarEInyectarDesdeUrl(trimmed);
+      } else if (trimmed.startsWith('<svg')) {
+        this.inyectarSvgCrudo(trimmed);
       } else {
         console.warn('⚠️ El formato proporcionado a appSvgInline no es válido.');
       }
-    }
+    });
   }
 
   /**

@@ -1,9 +1,11 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs';
 import { StoryService } from '../services/story.service';
 import { ScrollyStoryComponent } from './scrolly-story.component';
-import { HistoriaScrollyEntity } from '@shared/interfaces';
+import { HistoriaScrollyEntity } from '../../../../backend/src/shared/interfaces';
 import { firstValueFrom } from 'rxjs';
 
 @Component({
@@ -12,21 +14,21 @@ import { firstValueFrom } from 'rxjs';
   imports: [CommonModule, ScrollyStoryComponent],
   template: `
     <!-- Pantalla de carga -->
-    <div *ngIf="loading" class="state-screen loading">
+    <div *ngIf="loading()" class="state-screen loading">
       <div class="spinner"></div>
       <p>Descargando estructura del concepto técnico...</p>
     </div>
 
     <!-- Pantalla de error -->
-    <div *ngIf="error" class="state-screen error">
+    <div *ngIf="error()" class="state-screen error">
       <h2>❌ Concepto no encontrado</h2>
       <p>Verifica el slug en la URL o asegúrate de haberlo generado en el backend.</p>
     </div>
     
     <!-- Renderizado del Core Scrollytelling con GSAP -->
     <app-scrolly-story 
-      *ngIf="!loading && !error && storyData" 
-      [storyData]="storyData">
+      *ngIf="storyData() as data" 
+      [storyData]="data">
     </app-scrolly-story>
   `,
   styles: [`
@@ -55,38 +57,47 @@ import { firstValueFrom } from 'rxjs';
     @keyframes spin { to { transform: rotate(360deg); } }
   `]
 })
-export class ScrollyPageContainerComponent implements OnInit {
+export class ScrollyPageContainerComponent {
   private route = inject(ActivatedRoute);
   private storyService = inject(StoryService);
 
-  storyData: HistoriaScrollyEntity | null = null;
-  loading = true;
-  error = false;
+  /** Señal reactiva derivada del slug en la URL */
+  private slug = toSignal(
+    this.route.paramMap.pipe(map(params => params.get('slug'))),
+    { initialValue: null }
+  );
 
-  async ngOnInit() {
-    // Escuchar cambios en la URL de forma reactiva por si el usuario navega entre historias
-    this.route.paramMap.subscribe(async (params) => {
-      const slug = params.get('slug');
-      if (slug) {
-        await this.cargarDatosDeHistoria(slug);
-      } else {
-        this.loading = false;
-        this.error = true;
+  /** Estado reactivo del componente */
+  protected storyData = signal<HistoriaScrollyEntity | null>(null);
+  protected loading = signal(true);
+  protected error = signal(false);
+
+  constructor() {
+    // Efecto: cada vez que el slug cambia, dispara la carga de datos
+    effect(() => {
+      const slug = this.slug();
+      
+      if (!slug) {
+        this.loading.set(false);
+        this.error.set(true);
+        this.storyData.set(null);
+        return;
       }
-    });
-  }
 
-  private async cargarDatosDeHistoria(slug: string) {
-    this.loading = true;
-    this.error = false;
-    try {
-      // Convertimos el observable a promesa para un manejo asíncrono limpio con try/catch
-      this.storyData = await firstValueFrom(this.storyService.obtenerHistoriaPorSlug(slug));
-    } catch (err) {
-      console.error('Error recuperando los datos del concepto:', err);
-      this.error = true;
-    } finally {
-      this.loading = false;
-    }
+      this.loading.set(true);
+      this.error.set(false);
+
+      // Cargar datos de forma asíncrona
+      firstValueFrom(this.storyService.obtenerHistoriaPorSlug(slug))
+        .then((data) => {
+          this.storyData.set(data);
+          this.loading.set(false);
+        })
+        .catch((err) => {
+          console.error('Error recuperando los datos del concepto:', err);
+          this.error.set(true);
+          this.loading.set(false);
+        });
+    });
   }
 }
