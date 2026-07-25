@@ -306,8 +306,14 @@ export class AdminStoryDetailComponent {
     });
   }
 
-  /** Convierte scenes legacy (animation singular) al formato V1 (animations[]) */
+  /**
+   * Convierte scenes legacy (animation singular) al formato V1 (animations[]).
+   * Además, pre-inicializa fill/stroke con los valores reales del SVG para
+   * que los color pickers no aparezcan en negro (#000000).
+   * Ignora valores url(...) como gradientes.
+   */
   private migrarEscenasALegacy() {
+    const svg = this.data()?.json_modificado.svg_raw || '';
     for (const escena of this.escenas) {
       if (!escena.animations && escena.animation) {
         escena.animations = [{
@@ -316,17 +322,39 @@ export class AdminStoryDetailComponent {
           offset: 0,
           duration: 1,
         }];
-        // No eliminamos animation por si hay que revertir
       }
       if (!escena.animations) {
         escena.animations = [];
       }
-      // Asegurar valores por defecto
       for (const anim of escena.animations) {
         if (anim.offset === undefined) anim.offset = 0;
         if (anim.duration === undefined) anim.duration = 1;
+        if (anim.keyframes.fill === undefined && svg && anim.targetId) {
+          const svgFill = this.extraerAtributoSVG(svg, anim.targetId, 'fill');
+          // Solo usar colores hex sólidos, ignorar url(...) gradientes
+          if (svgFill && /^#[0-9a-f]{3,8}$/i.test(svgFill)) anim.keyframes.fill = svgFill;
+        }
+        if (anim.keyframes.stroke === undefined && svg && anim.targetId) {
+          const svgStroke = this.extraerAtributoSVG(svg, anim.targetId, 'stroke');
+          if (svgStroke && /^#[0-9a-f]{3,8}$/i.test(svgStroke)) anim.keyframes.stroke = svgStroke;
+        }
       }
     }
+  }
+
+  /** Helper para extraer un atributo SVG por targetId */
+  private extraerAtributoSVG(svg: string, targetId: string, attr: string): string | null {
+    const idPattern = new RegExp(`id="${targetId}"`);
+    const match = svg.match(idPattern);
+    if (!match) return null;
+    const pos = match.index!;
+    const beforeTag = svg.lastIndexOf('<', pos);
+    if (beforeTag === -1) return null;
+    const afterTag = svg.indexOf('>', pos);
+    if (afterTag === -1) return null;
+    const tagContent = svg.substring(beforeTag, afterTag + 1);
+    const attrMatch = tagContent.match(new RegExp(`${attr}=["']([^"']+)["']`));
+    return attrMatch ? attrMatch[1] : null;
   }
 
   trackByStep(_i: number, scene: ScrollyScene): number {
@@ -430,11 +458,15 @@ export class AdminStoryDetailComponent {
       }
       case 'fill': {
         const m = tagContent.match(/fill=["']([^"']+)["']/);
-        return m ? m[1] : '—';
+        if (!m) return '—';
+        if (m[1].startsWith('url(')) return '🎨 gradient';
+        return m[1];
       }
       case 'stroke': {
         const m = tagContent.match(/stroke=["']([^"']+)["']/);
-        return m ? m[1] : '—';
+        if (!m) return '—';
+        if (m[1].startsWith('url(')) return '🎨 gradient';
+        return m[1];
       }
       case 'strokeWidth': {
         const m = tagContent.match(/stroke-width=["']?([\d.]+)["']?/);
